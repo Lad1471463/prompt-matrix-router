@@ -1,0 +1,133 @@
+/* motion.css — 动效层（DESIGN-CONTRACT.md §4）
+ * 只动 transform / opacity / filter / 颜色（box-shadow 为纯 paint 过渡，不触发 layout）。
+ * 加载顺序：在 ui.css / matrix.css 之后，以覆盖基础层的 transition。 */
+
+/* ── 通用 ── */
+.mo-num { font-variant-numeric: tabular-nums; }   /* 数字滚动防抖：契约"数字一律 tabular-nums" */
+.mo-rel { position: relative; }
+
+/* 入场波（stagger）：位移 6px（<24px 上限），200ms，ease-out */
+.mo-enter { animation: mo-enter var(--dur-2) var(--ease-out) backwards; }
+@keyframes mo-enter { from { opacity: 0; transform: translateY(6px); } }
+
+/* ── 格子：hover 上浮 1px；选中 3px 强调条；状态色 320ms 平滑不闪 ── */
+.cell {
+  position: relative;
+  transition:
+    transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-3) var(--ease-out),
+    color var(--dur-3) var(--ease-out);
+}
+.cell:hover { transform: translateY(-1px); box-shadow: var(--sh-2); }
+.cell::before {
+  content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px;
+  border-radius: var(--r-pill); background: var(--accent);
+  transform: scaleY(0); transform-origin: top;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.cell.mo-sel::before { transform: scaleY(1); }
+.cell.mo-sel { background: var(--accent-soft); }
+
+/* 状态变化 flash：伪元素透明度扫过，不碰元素真实背景色（避免闪断） */
+.mo-flash::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: var(--mo-flash-c, var(--accent-soft)); opacity: 0; pointer-events: none;
+  animation: mo-flash var(--dur-3) var(--ease-out); will-change: opacity;
+}
+.mo-flash-ok   { --mo-flash-c: var(--ok-soft); }
+.mo-flash-err  { --mo-flash-c: var(--bad-soft); }
+.mo-flash-warn { --mo-flash-c: var(--warn-soft); }
+.mo-flash-info { --mo-flash-c: var(--accent-soft); }
+@keyframes mo-flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+
+/* pulse：单次 3.5% 弹跳（spring） */
+.mo-pulse { animation: mo-pulse var(--dur-3) var(--ease-spring); will-change: transform; }
+@keyframes mo-pulse { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.04); } }
+
+/* ── toast：底部居中升起 + 单次轻微回弹，2.2s 后淡出（JS 排队，同屏至多 1 条）── */
+.mo-toast {
+  position: fixed; bottom: 18px; left: 50%; z-index: 70;
+  transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--fg); color: var(--bg); border-radius: var(--r-md);
+  padding: 8px 16px; font-size: 13px; box-shadow: var(--sh-3);
+  max-width: min(80vw, 560px); white-space: pre-wrap;
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+.mo-toast.mo-on { opacity: 1; transform: translate(-50%, 0); }
+.mo-toast.err { background: var(--bad); }
+.mo-toast.ok  { background: var(--ok); }
+/* 复用页面已有 #toast 时只接管可见性，外观归 ui.css */
+.toast.mo-on { opacity: 1; transform: translate(-50%, 0); }
+.mo-toast.mo-in, .toast.mo-in {
+  animation: mo-toast-in var(--dur-2) var(--ease-out) both; will-change: transform, opacity;
+}
+.mo-toast.mo-out, .toast.mo-out { animation: mo-toast-out var(--dur-1) var(--ease-out) both; }
+@keyframes mo-toast-in {
+  from { opacity: 0; transform: translate(-50%, 16px) scale(.97); }
+  60%  { transform: translate(-50%, -3px) scale(1); }
+  to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes mo-toast-out { to { opacity: 0; transform: translate(-50%, 10px); } }
+
+/* ── 面板：右侧滑入 320ms ease-out；关闭 200ms；遮罩 blur(12px) 淡入 ── */
+aside#panel {
+  transition: transform var(--dur-3) var(--ease-out), box-shadow var(--dur-3) var(--ease-out);
+}
+aside#panel:not(.open) { transition-duration: var(--dur-2); transition-timing-function: var(--ease-inout); }
+.mo-scrim {
+  position: fixed; inset: 0; z-index: 19;
+  background: var(--bg); opacity: 0; pointer-events: none;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+.mo-scrim.mo-on { opacity: .45; pointer-events: auto; }
+
+/* ── 按钮 pending：右侧 14px 环形进度，绝对定位，宽度不变不抖 ── */
+.mo-pending { color: var(--fg-mute); }
+.mo-pending::after {
+  content: ""; position: absolute; right: 7px; top: calc(50% - 7px);
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--line); border-top-color: var(--accent);
+  animation: mo-spin .8s linear infinite; will-change: transform;
+}
+@keyframes mo-spin { to { transform: rotate(1turn); } }
+
+/* ── 骨架屏：shimmer 1.2s 循环，--panel-2 → --line 扫光 ── */
+.mo-skel {
+  display: flex; flex-direction: column; gap: 12px; padding: 4px 2px;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+.mo-skel.mo-gone { opacity: 0; }
+.mo-skel-row { display: flex; flex-direction: column; gap: 6px; }
+.mo-skel-bar {
+  position: relative; overflow: hidden; height: 10px;
+  border-radius: var(--r-sm); background: var(--panel-2);
+}
+.mo-skel-bar.l { width: 58%; }
+.mo-skel-bar.s { width: 36%; height: 8px; }
+.mo-skel-bar::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--line) 50%, transparent);
+  animation: mo-shimmer 1.2s var(--ease-inout) infinite; will-change: transform;
+}
+@keyframes mo-shimmer { to { transform: translateX(100%); } }
+
+/* ── stale 呼吸条：顶部 2px，常驻呼吸（唯一长循环） ── */
+.mo-stale {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 60;
+  background: var(--warn); opacity: 0; pointer-events: none;
+}
+.mo-stale.on { animation: mo-breathe 2.2s var(--ease-inout) infinite alternate; }
+@keyframes mo-breathe { from { opacity: .25; } to { opacity: .8; } }
+
+/* ── prefers-reduced-motion：全局退化为即时变化 ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .mo-stale.on { animation: none !important; opacity: .55; }  /* 信息保留，动效移除 */
+}

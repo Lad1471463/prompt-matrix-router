@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>破限方法管理器</title>
+<link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="matrix.css">
+<link rel="stylesheet" href="motion.css">
+</head>
+<body>
+<header>
+  <span class="dot off" id="gwDot"></span>
+  <h1>方法矩阵</h1>
+  <span class="sub" id="gwText">网关未连接</span>
+  <div class="spacer"></div>
+  <span class="sub" id="saveState">已同步</span>
+  <button id="btnRebuild" class="ghost" title="扫描 bench 下 results-*.json，把实测结果写回格子">重建证据</button>
+  <button id="btnReload" class="ghost">重新载入</button>
+  <button id="btnSave" class="primary">保存</button>
+</header>
+
+<nav>
+  <button data-view="matrix" class="active">矩阵</button>
+  <button data-view="methods">方法库</button>
+  <button data-view="results">实验记录</button>
+  <button data-view="gateway">网关</button>
+  <button data-view="export">导出</button>
+</nav>
+
+<main>
+  <section class="view active" id="view-matrix">
+    <div class="overview" id="overview"></div>
+    <div class="filters" id="domainFilter"></div>
+    <div class="filters" id="modelFilter"></div>
+    <div id="matrixWrap"></div>
+  </section>
+
+  <section class="view" id="view-methods">
+    <div class="grid2" id="methodsWrap"></div>
+  </section>
+
+  <section class="view" id="view-results">
+    <div class="filters">
+      <input type="text" id="resultSearch" placeholder="过滤文件名…" style="width:260px">
+      <span class="sub muted" id="resultCount"></span>
+    </div>
+    <table class="list"><thead><tr><th>文件</th><th>大小</th><th>修改时间</th></tr></thead><tbody id="resultsBody"></tbody></table>
+    <div id="resultDetail"></div>
+  </section>
+
+  <section class="view" id="view-gateway">
+    <div class="card"><h3>网关状态</h3><div id="gwDetail" class="kv"></div></div>
+    <div class="card"><h3>管道</h3><div id="pipeDetail" class="note"></div></div>
+  </section>
+
+  <section class="view" id="view-export">
+    <div class="card">
+      <h3>启动命令</h3>
+      <p class="muted" style="font-size:12px">勾选要生效的域；不勾就是全开。</p>
+      <div class="filters" id="exportDomains"></div>
+      <pre class="cmd" id="exportCmd">—</pre>
+      <button id="btnCopy">复制</button>
+    </div>
+    <div class="card"><h3>单域调用示例</h3><pre class="cmd" id="exportSample">—</pre></div>
+  </section>
+</main>
+
+<aside id="panel">
+  <button class="closeX ghost" id="btnClose">✕</button>
+  <h2 id="pTitle">—</h2>
+  <div class="meta" id="pMeta"></div>
+
+  <div id="presetBar" class="presets"></div>
+
+  <div class="field"><label>改写规则</label><select id="pRewrite"></select></div>
+  <div class="field"><label>内核 / 档位</label><input type="text" id="pProfile" list="profileList"><datalist id="profileList"></datalist></div>
+
+  <details class="more">
+    <summary>更多设置</summary>
+    <div class="field"><label>首选路径</label>
+      <select id="pFirst"><option value="raw">raw · 原文优先</option><option value="rewrite">rewrite · 直接改写</option></select>
+    </div>
+    <div class="field"><label>后处理</label><div class="checks" id="pPost"></div></div>
+    <div class="field"><label>备注</label><input type="text" id="pNote" placeholder="为什么用这套"></div>
+    <div class="field"><label>证据（实测）</label><div class="note" id="pEv"></div></div>
+  </details>
+
+  <div class="actions">
+    <button class="primary" id="btnApply">应用</button>
+    <button class="ghost" id="btnDel">删除</button>
+  </div>
+
+  <details class="more" style="margin-top:18px">
+    <summary>新增格子</summary>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <select id="addModel"></select>
+      <select id="addDomain"></select>
+      <button id="btnAdd">添加</button>
+    </div>
+  </details>
+</aside>
+
+<div class="toast" id="toast"></div>
+<script src="uimatrix.js"></script>
+<script src="uimotion.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

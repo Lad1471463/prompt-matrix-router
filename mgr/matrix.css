@@ -1,0 +1,204 @@
+/* matrix.css —— 「模型 × 域」方法矩阵样式（Agent B）
+ *
+ * 只写矩阵自己的样式；颜色 / 圆角 / 阴影 / 缓动一律 var(--token)，
+ * token 由 ui.css（Agent A）在 :root 定义（契约 §2）。本文件不写死任何色值。
+ * 类名全部 mx- / cell- 前缀（契约 §3），不污染外层。
+ *
+ * 供 C（动效）/ A（设计系统）挂靠的状态钩子：
+ *   button.cell[data-state]    ok | warn | bad | empty
+ *   button.cell[data-new]      ＋空格（无配置，可点新建）
+ *   button.cell[data-rw=none]  原文直发（无改写规则）
+ *   button.cell[data-selected] 选中格（左 3px 强调条）
+ *   button.cell[data-stale]    registry 未生效标记（全部格都会带）
+ *   .mx-root[data-stale]       矩阵级 stale（呼吸条可挂这里）
+ *   .mx-root[data-state]       loading | error | empty | filtered（非表格态）
+ *
+ * 动效自查：本文件的动画只动 transform（骨架扫光）；过渡只动颜色；
+ * @media (prefers-reduced-motion: reduce) 全部退化为即时变化（契约 §4 硬约束）。
+ */
+
+/* ── 根 ─────────────────────────────────────────────── */
+.mx-root {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;   /* 数字一律 tabular-nums */
+}
+.mx-root, .mx-root * { box-sizing: border-box; }
+
+/* ── 顶部条：筛选摘要 + stale 提示（有筛选或 stale 时才出现） ── */
+.mx-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 2px 9px; }
+.mx-fb { color: var(--fg-dim); }
+.mx-stale { color: var(--warn); }
+.mx-fb-clear, .mx-clear, .mx-retry {
+  font: inherit; font-size: 12px;
+  color: var(--fg); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 3px 10px; cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.mx-fb-clear:hover, .mx-clear:hover, .mx-retry:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── 滚动容器（表头/行头吸顶吸左在这里生效） ── */
+.mx-scroll { overflow: auto; max-height: calc(100vh - 180px); min-height: 240px; }
+
+/* ── 表格骨架 ── */
+table.mx { border-collapse: separate; border-spacing: 0; width: 100%; }
+
+/* 表头（域列）：吸顶 */
+table.mx thead th {
+  position: sticky; top: 0; z-index: 3;
+  background: var(--bg);
+  font-weight: 500; color: var(--fg-dim);
+  text-align: left; vertical-align: bottom;
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid var(--line-strong);
+  min-width: 192px; max-width: 232px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 左上角：既吸顶又吸左 */
+table.mx thead th.mx-corner {
+  left: 0; z-index: 4;
+  width: 176px; min-width: 176px; max-width: 176px;
+  padding-left: 2px;
+}
+
+/* 行头（模型列）：吸左 */
+th.mx-model {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--bg);
+  text-align: left; vertical-align: top;
+  width: 176px; min-width: 176px; max-width: 176px;
+  padding: 9px 12px 6px 2px;
+  border-right: 1px solid var(--line);
+}
+.mx-model-id {
+  display: block;
+  font-family: var(--font-mono); font-size: 12px; color: var(--fg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mx-model-meta {
+  display: block; margin-top: 2px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--fg-mute);
+  white-space: nowrap;
+}
+tbody tr:hover th.mx-model .mx-model-id { color: var(--accent); }   /* 行追踪提示 */
+
+/* 格子容器：内边距即格间距（吸顶/吸左才能无缝遮挡） */
+td.mx-c { padding: 4px 5px 10px 6px; vertical-align: top; width: 192px; min-width: 192px; }
+td.mx-c:last-child { padding-right: 2px; }
+
+/* ── 格子按钮：默认只露两行半（方法 + 成功率 + 一行轻指标），其余进 title ──
+   设计取向：矩阵是「扫一眼」用的，不是「读一遍」用的。备注和基线放 title，
+   点开面板才看细节。DOM 顺序保持契约原样，A/C 不受影响。 */
+button.cell {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "rw  ok"
+    "met met";
+  width: 100%; min-height: 66px;
+  padding: 9px 10px 8px;
+  font: inherit; font-size: 12px; line-height: 1.5;
+  text-align: left; color: var(--fg);
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out),
+              background-color var(--dur-1) var(--ease-out),
+              box-shadow var(--dur-1) var(--ease-out);
+}
+button.cell:hover { border-color: var(--accent); }
+button.cell:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* 选中：左侧 3px 强调条（C 可在此基础上加过渡/微亮） */
+button.cell[data-selected] { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* ① 改写规则名（等宽） + 成功率徽章 */
+.cell-rw {
+  grid-area: rw; min-width: 0; padding-right: 8px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--purple);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+button.cell[data-rw="none"] .cell-rw { color: var(--fg-mute); }   /* 原文直发：弱化 */
+.cell-ok {
+  grid-area: ok; justify-self: end; align-self: start;
+  font-family: var(--font-mono); font-size: 11px; line-height: 1.5;
+  padding: 0 7px; border-radius: var(--r-pill);
+  color: var(--fg-dim); background: var(--panel-2);
+  white-space: nowrap;
+}
+/* 状态色：0.3 秒读懂靠这颗徽章（颜色语义由 A 的 token 决定） */
+button.cell[data-state="ok"]   .cell-ok { color: var(--ok);   background: var(--ok-soft); }
+button.cell[data-state="warn"] .cell-ok { color: var(--warn); background: var(--warn-soft); }
+button.cell[data-state="bad"]  .cell-ok { color: var(--bad);  background: var(--bad-soft); }
+button.cell[data-state="bad"] { border-color: var(--bad); }
+
+/* ② 指标行 */
+.cell-metrics {
+  grid-area: met; min-width: 0; margin-top: 5px;
+  font-size: 11px; color: var(--fg-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cell-metrics:empty { display: none; }
+
+/* ③ 备注与 ④ 基线：默认收起，内容仍在 title 里（悬停可看、面板里可编辑） */
+.cell-note, .cell-base { display: none; }
+
+/* ＋空格：明显退后，但仍可点（点=新建） */
+button.cell[data-new] {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60px;
+  background: transparent;
+  border: 1px dashed var(--line);
+  opacity: .55;
+}
+button.cell[data-new]:hover { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
+.cell-add { font-size: 16px; line-height: 1; color: var(--fg-mute); }
+
+/* ── 骨架屏（加载态）── */
+.mx-skel-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px; padding: 40px 2px 10px;
+}
+.mx-skel {
+  display: block; position: relative; overflow: hidden;
+  height: 92px; border-radius: var(--r-md);
+  background: var(--panel-2);
+}
+/* 扫光只动 transform（契约 §4：不许动 width/height/margin） */
+.mx-skel::after {
+  content: ""; position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--line), transparent);
+  animation: mx-sweep 1.2s var(--ease-inout) infinite;
+}
+@keyframes mx-sweep { to { transform: translateX(100%); } }
+
+/* ── 非表格态：错误 / 空数据 / 筛选无匹配 ── */
+.mx-msg {
+  margin: 48px auto 24px; max-width: 460px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  text-align: center; padding: 26px 22px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+}
+.mx-msg-t { font-size: 13px; color: var(--fg); }
+.mx-root[data-state="error"] .mx-msg-t { color: var(--bad); }
+.mx-msg-d { font-size: 12px; color: var(--fg-dim); word-break: break-all; }
+.mx-msg .mx-retry, .mx-msg .mx-clear {
+  margin-top: 8px;
+  background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+}
+
+/* ── 降级与窄屏 ── */
+@media (prefers-reduced-motion: reduce) {
+  button.cell, .mx-fb-clear, .mx-clear, .mx-retry { transition: none; }
+  .mx-skel::after { animation: none; }
+}
+@media (max-width: 960px) {
+  th.mx-model, table.mx thead th.mx-corner { width: 148px; min-width: 148px; max-width: 148px; }
+  td.mx-c { width: 176px; min-width: 176px; }
+  table.mx thead th { min-width: 176px; }
+}

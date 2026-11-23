@@ -1,0 +1,12 @@
+node_modules/
+*.log
+logs/
+registry.local.json
+registry.json.bak
+registry.json.pre-fix
+.mgr-seq
+.mgr.lock
+*.tmp-*
+.DS_Store
+Thumbs.db
+recovered/
